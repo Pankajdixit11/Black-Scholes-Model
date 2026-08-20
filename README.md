@@ -64,6 +64,8 @@ python run_ui.py
 ```
 *Or double-click `run_ui.bat` on Windows. This starts the local server and automatically opens **`http://localhost:8000`** in your browser.*
 
+![UI](http://localhost:8000/)
+
 #### Option 2: Streamlit Analytics Platform
 ```bash
 pip install streamlit plotly pandas
