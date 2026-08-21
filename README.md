@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Framework](https://img.shields.io/badge/Frontend-TailwindCSS%20%7C%20Chart.js%20%7C%20Plotly-cyan.svg)](https://tailwindcss.com/)
-[![Engine](https://img.shields.io/badge/Engine-Unmodified%20code.py-emerald.svg)](#core-engine)
+[![Engine](https://img.shields.io/badge/Engine-code.py-emerald.svg)](#core-engine)
 
 A comprehensive, modern Quantitative Finance analytics dashboard and visualizer built on top of the analytical **Black-Scholes-Merton European Option Pricing Model**.
 
@@ -53,10 +53,7 @@ The platform provides real-time pricing, sensitivity analysis across the **Greek
 ```bash
 pip install numpy scipy
 ```
-## Render Deployment URL
-```
-https://black-scholes-analytics-platform-1.onrender.com
-```
+
 ---
 
 ### Running the Dashboard
@@ -72,7 +69,10 @@ python run_ui.py
 pip install streamlit plotly pandas
 streamlit run app.py
 ```
-
+### Render Deployment URL
+```
+https://black-scholes-analytics-platform-1.onrender.com
+```
 ---
 
 ## 📐 Mathematical Formulation
