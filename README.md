@@ -64,6 +64,8 @@ python run_ui.py
 ```
 *Or double-click `run_ui.bat` on Windows. This starts the local server and automatically opens **`http://localhost:8000`** in your browser.*
 
+[Open Visualizer](http://localhost:8000/)
+
 ![Dashboard](https://github.com/Pankajdixit11/Black-Scholes-Model/blob/383ea8072adf27e20bf9eea3b4e02c68bad4b5ab/Dashboard.png)
 
 #### Option 2: Streamlit Analytics Platform
