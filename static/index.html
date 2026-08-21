@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Black-Scholes Option Pricing & Greeks Analytics Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#ecfeff',
+                            100: '#cffafe',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            900: '#164e63',
+                        },
+                        darkbg: '#0a0f1d',
+                        darkcard: '#111827',
+                        darkcard2: '#1f2937',
+                        callGreen: '#10b981',
+                        putRed: '#ef4444',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js and Plotly.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <!-- KaTeX for Math Equations -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body class="bg-[#0b0f19] text-gray-100 min-h-screen font-sans antialiased selection:bg-cyan-500 selection:text-white">
+
+    <!-- Top Navigation Bar -->
+    <header class="border-b border-gray-800 bg-[#0f172a]/90 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                    <i class="fa-solid fa-chart-line text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400 bg-clip-text text-transparent">
+                        Black-Scholes Analytics
+                    </h1>
+                    <p class="text-xs text-gray-400 flex items-center gap-1.5">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        
+                    </p>
+                </div>
+            </div>
+
+            <!-- Quick Action / Presets & Header Stats -->
+            <div class="flex items-center space-x-3">
+                <div class="hidden md:flex items-center space-x-2 text-xs bg-gray-800/80 border border-gray-700/60 rounded-lg p-1">
+                    <span class="text-gray-400 px-2">Presets:</span>
+                    <button onclick="applyPreset('standard')" class="px-2.5 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 transition">Standard ATM</button>
+                    <button onclick="applyPreset('highvol')" class="px-2.5 py-1 rounded hover:bg-gray-700 text-gray-300 transition">High Vol (45%)</button>
+                    <button onclick="applyPreset('leaps')" class="px-2.5 py-1 rounded hover:bg-gray-700 text-gray-300 transition">LEAPS (2Y)</button>
+                    <button onclick="applyPreset('zerodte')" class="px-2.5 py-1 rounded hover:bg-gray-700 text-gray-300 transition">0-DTE</button>
+                </div>
+                <button onclick="openModal('formula-modal')" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-600/50 transition flex items-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-square-root-variable"></i>
+                    <span>Formulas & Theory</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- LEFT SIDEBAR: Parameter Controls (4 Cols) -->
+            <aside class="lg:col-span-4 space-y-6">
+                <div class="bg-gray-900/90 border border-gray-800 rounded-2xl p-5 shadow-xl backdrop-blur">
+                    <div class="flex items-center justify-between pb-3 border-b border-gray-800 mb-4">
+                        <h2 class="text-sm font-semibold text-gray-200 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-cyan-400"></i> Model Parameters
+                        </h2>
+                        <button onclick="resetDefaults()" title="Reset to Defaults" class="text-xs text-gray-400 hover:text-cyan-400 transition">
+                            <i class="fa-solid fa-rotate-left mr-1"></i> Reset
+                        </button>
+                    </div>
+
+                    <form id="params-form" class="space-y-4" onsubmit="return false;">
+                        <!-- Spot Price (S) -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-medium text-gray-300">Spot Price (\(S\))</label>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-xs text-gray-400">$</span>
+                                    <input type="number" id="spot-val" value="100.0" step="0.5" min="0.1" class="w-20 bg-gray-800 border border-gray-700 text-cyan-300 text-xs rounded px-2 py-1 text-right focus:outline-none focus:border-cyan-500 font-mono">
+                                </div>
+                            </div>
+                            <input type="range" id="spot-slider" min="10" max="300" step="0.5" value="100" class="w-full accent-cyan-400 h-1.5 bg-gray-700 rounded-lg cursor-pointer">
+                        </div>
+
+                        <!-- Strike Price (K) -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-medium text-gray-300">Strike Price (\(K\))</label>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-xs text-gray-400">$</span>
+                                    <input type="number" id="strike-val" value="100.0" step="0.5" min="0.1" class="w-20 bg-gray-800 border border-gray-700 text-cyan-300 text-xs rounded px-2 py-1 text-right focus:outline-none focus:border-cyan-500 font-mono">
+                                </div>
+                            </div>
+                            <input type="range" id="strike-slider" min="10" max="300" step="0.5" value="100" class="w-full accent-cyan-400 h-1.5 bg-gray-700 rounded-lg cursor-pointer">
+                        </div>
+
+                        <!-- Time to Maturity (T) -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-medium text-gray-300">Expiration (\(T\))</label>
+                                <div class="flex items-center gap-2">
+                                    <span id="days-display" class="text-[11px] text-gray-400 font-mono">365 days</span>
+                                    <input type="number" id="time-val" value="1.00" step="0.01" min="0.002" max="10" class="w-20 bg-gray-800 border border-gray-700 text-cyan-300 text-xs rounded px-2 py-1 text-right focus:outline-none focus:border-cyan-500 font-mono">
+                                </div>
+                            </div>
+                            <input type="range" id="time-slider" min="0.01" max="3.0" step="0.01" value="1.0" class="w-full accent-cyan-400 h-1.5 bg-gray-700 rounded-lg cursor-pointer">
+                            <div class="flex justify-between text-[10px] text-gray-500 mt-1">
+                                <button type="button" onclick="setTimeVal(0.019)" class="hover:text-cyan-400">7D</button>
+                                <button type="button" onclick="setTimeVal(0.082)" class="hover:text-cyan-400">30D</button>
+                                <button type="button" onclick="setTimeVal(0.25)" class="hover:text-cyan-400">90D</button>
+                                <button type="button" onclick="setTimeVal(0.5)" class="hover:text-cyan-400">180D</button>
+                                <button type="button" onclick="setTimeVal(1.0)" class="hover:text-cyan-400">1Y</button>
+                                <button type="button" onclick="setTimeVal(2.0)" class="hover:text-cyan-400">2Y</button>
+                            </div>
+                        </div>
+
+                        <!-- Volatility (sigma) -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-medium text-gray-300">Volatility (\(\sigma\))</label>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="vol-val" value="20.0" step="0.5" min="1" max="250" class="w-20 bg-gray-800 border border-gray-700 text-cyan-300 text-xs rounded px-2 py-1 text-right focus:outline-none focus:border-cyan-500 font-mono">
+                                    <span class="text-xs text-gray-400">%</span>
+                                </div>
+                            </div>
+                            <input type="range" id="vol-slider" min="1" max="150" step="0.5" value="20" class="w-full accent-cyan-400 h-1.5 bg-gray-700 rounded-lg cursor-pointer">
+                        </div>
+
+                        <!-- Risk-Free Rate (r) -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-medium text-gray-300">Risk-Free Rate (\(r\))</label>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="rate-val" value="5.0" step="0.1" min="0" max="50" class="w-20 bg-gray-800 border border-gray-700 text-cyan-300 text-xs rounded px-2 py-1 text-right focus:outline-none focus:border-cyan-500 font-mono">
+                                    <span class="text-xs text-gray-400">%</span>
+                                </div>
+                            </div>
+                            <input type="range" id="rate-slider" min="0" max="25" step="0.1" value="5.0" class="w-full accent-cyan-400 h-1.5 bg-gray-700 rounded-lg cursor-pointer">
+                        </div>
+
+                        <!-- Dividend Yield (q) -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-medium text-gray-300">Dividend Yield (\(q\))</label>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="div-val" value="0.0" step="0.1" min="0" max="30" class="w-20 bg-gray-800 border border-gray-700 text-cyan-300 text-xs rounded px-2 py-1 text-right focus:outline-none focus:border-cyan-500 font-mono">
+                                    <span class="text-xs text-gray-400">%</span>
+                                </div>
+                            </div>
+                            <input type="range" id="div-slider" min="0" max="15" step="0.1" value="0.0" class="w-full accent-cyan-400 h-1.5 bg-gray-700 rounded-lg cursor-pointer">
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Quick Moneyness & Model Diagnostics -->
+                <div class="bg-gray-900/90 border border-gray-800 rounded-2xl p-5 shadow-xl">
+                    <h3 class="text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-calculator text-indigo-400"></i> Intermediate Values
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div class="bg-gray-800/60 p-2.5 rounded-xl border border-gray-700/50">
+                            <span class="text-gray-400 block text-[11px]">\(d_1\) Parameter</span>
+                            <span id="d1-display" class="font-mono text-indigo-300 font-semibold text-sm">--</span>
+                        </div>
+                        <div class="bg-gray-800/60 p-2.5 rounded-xl border border-gray-700/50">
+                            <span class="text-gray-400 block text-[11px]">\(d_2\) Parameter</span>
+                            <span id="d2-display" class="font-mono text-indigo-300 font-semibold text-sm">--</span>
+                        </div>
+                        <div class="bg-gray-800/60 p-2.5 rounded-xl border border-gray-700/50">
+                            <span class="text-gray-400 block text-[11px]">\(N(d_1)\) (Call Delta w/o q)</span>
+                            <span id="nd1-display" class="font-mono text-emerald-400 font-semibold text-sm">--</span>
+                        </div>
+                        <div class="bg-gray-800/60 p-2.5 rounded-xl border border-gray-700/50">
+                            <span class="text-gray-400 block text-[11px]">\(N(d_2)\) (Risk Neutral Prob)</span>
+                            <span id="nd2-display" class="font-mono text-cyan-400 font-semibold text-sm">--</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- RIGHT MAIN PANEL: Results, Greeks, Tabs & Visualizations (8 Cols) -->
+            <section class="lg:col-span-8 space-y-6">
+
+                <!-- TOP KPI CARDS: Call Price, Put Price, Put-Call Parity -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Call Card -->
+                    <div class="relative overflow-hidden bg-gradient-to-br from-emerald-950/40 via-gray-900 to-gray-900 border border-emerald-500/30 rounded-2xl p-5 shadow-xl hover:border-emerald-500/50 transition">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-arrow-trend-up"></i> European Call Price
+                                </span>
+                                <div class="flex items-baseline gap-2 mt-1">
+                                    <span class="text-3xl font-extrabold text-white font-mono" id="call-price-display">$0.00</span>
+                                    <span id="call-moneyness-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-500/40">ATM</span>
+                                </div>
+                            </div>
+                            <div class="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-400">
+                                <i class="fa-solid fa-money-bill-trend-up text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-gray-800/80">
+                            <div class="text-gray-400">Intrinsic Value: <span id="call-intrinsic" class="text-gray-200 font-mono font-medium">$0.00</span></div>
+                            <div class="text-gray-400">Time Value: <span id="call-timeval" class="text-gray-200 font-mono font-medium">$0.00</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Put Card -->
+                    <div class="relative overflow-hidden bg-gradient-to-br from-rose-950/40 via-gray-900 to-gray-900 border border-rose-500/30 rounded-2xl p-5 shadow-xl hover:border-rose-500/50 transition">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="text-xs font-semibold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-arrow-trend-down"></i> European Put Price
+                                </span>
+                                <div class="flex items-baseline gap-2 mt-1">
+                                    <span class="text-3xl font-extrabold text-white font-mono" id="put-price-display">$0.00</span>
+                                    <span id="put-moneyness-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-900/60 text-rose-300 border border-rose-500/40">ATM</span>
+                                </div>
+                            </div>
+                            <div class="p-2.5 bg-rose-500/10 rounded-xl border border-rose-500/20 text-rose-400">
+                                <i class="fa-solid fa-shield-halved text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-gray-800/80">
+                            <div class="text-gray-400">Intrinsic Value: <span id="put-intrinsic" class="text-gray-200 font-mono font-medium">$0.00</span></div>
+                            <div class="text-gray-400">Time Value: <span id="put-timeval" class="text-gray-200 font-mono font-medium">$0.00</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GREEKS CARDS MATRIX -->
+                <div class="bg-gray-900/90 border border-gray-800 rounded-2xl p-5 shadow-xl">
+                    <h3 class="text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3 flex items-center justify-between">
+                        <span class="flex items-center gap-2"><i class="fa-solid fa-cubes-stacked text-cyan-400"></i> Option Greeks Dashboard</span>
+                        <span class="text-[11px] text-gray-500 lowercase">Calculated via analytical derivatives</span>
+                    </h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                        <!-- Delta -->
+                        <div class="bg-gray-800/60 p-3 rounded-xl border border-gray-700/60 hover:border-cyan-500/40 transition">
+                            <div class="text-xs text-gray-400 flex items-center justify-between">
+                                <span class="font-bold text-gray-300">Delta (\(\Delta\))</span>
+                                <i class="fa-solid fa-bolt text-[10px] text-amber-400"></i>
+                            </div>
+                            <div class="mt-2 space-y-0.5">
+                                <div class="text-[11px] flex justify-between"><span class="text-emerald-400">Call:</span> <span id="greek-delta-call" class="font-mono font-semibold">--</span></div>
+                                <div class="text-[11px] flex justify-between"><span class="text-rose-400">Put:</span> <span id="greek-delta-put" class="font-mono font-semibold">--</span></div>
+                            </div>
+                            <span class="block text-[9px] text-gray-500 mt-1.5">\(\partial V / \partial S\)</span>
+                        </div>
+
+                        <!-- Gamma -->
+                        <div class="bg-gray-800/60 p-3 rounded-xl border border-gray-700/60 hover:border-cyan-500/40 transition">
+                            <div class="text-xs text-gray-400 flex items-center justify-between">
+                                <span class="font-bold text-gray-300">Gamma (\(\Gamma\))</span>
+                                <i class="fa-solid fa-wave-square text-[10px] text-indigo-400"></i>
+                            </div>
+                            <div class="mt-2">
+                                <div class="text-base font-bold text-white font-mono" id="greek-gamma">--</div>
+                                <div class="text-[10px] text-gray-400">Same for Call & Put</div>
+                            </div>
+                            <span class="block text-[9px] text-gray-500 mt-1">\(\partial^2 V / \partial S^2\)</span>
+                        </div>
+
+                        <!-- Vega -->
+                        <div class="bg-gray-800/60 p-3 rounded-xl border border-gray-700/60 hover:border-cyan-500/40 transition">
+                            <div class="text-xs text-gray-400 flex items-center justify-between">
+                                <span class="font-bold text-gray-300">Vega (\(\mathcal{V}\))</span>
+                                <i class="fa-solid fa-gauge-high text-[10px] text-cyan-400"></i>
+                            </div>
+                            <div class="mt-2">
+                                <div class="text-base font-bold text-white font-mono" id="greek-vega">--</div>
+                                <div class="text-[10px] text-gray-400" id="greek-vega-1pct">per 1% \(\sigma\): --</div>
+                            </div>
+                            <span class="block text-[9px] text-gray-500 mt-1">\(\partial V / \partial \sigma\)</span>
+                        </div>
+
+                        <!-- Theta -->
+                        <div class="bg-gray-800/60 p-3 rounded-xl border border-gray-700/60 hover:border-cyan-500/40 transition">
+                            <div class="text-xs text-gray-400 flex items-center justify-between">
+                                <span class="font-bold text-gray-300">Theta (\(\Theta\))</span>
+                                <i class="fa-solid fa-clock text-[10px] text-purple-400"></i>
+                            </div>
+                            <div class="mt-2 space-y-0.5">
+                                <div class="text-[11px] flex justify-between"><span class="text-emerald-400">Call/d:</span> <span id="greek-theta-call-day" class="font-mono font-semibold">--</span></div>
+                                <div class="text-[11px] flex justify-between"><span class="text-rose-400">Put/d:</span> <span id="greek-theta-put-day" class="font-mono font-semibold">--</span></div>
+                            </div>
+                            <span class="block text-[9px] text-gray-500 mt-1.5">\(\partial V / \partial t\) (per day)</span>
+                        </div>
+
+                        <!-- Rho -->
+                        <div class="bg-gray-800/60 p-3 rounded-xl border border-gray-700/60 hover:border-cyan-500/40 transition">
+                            <div class="text-xs text-gray-400 flex items-center justify-between">
+                                <span class="font-bold text-gray-300">Rho (\(\rho\))</span>
+                                <i class="fa-solid fa-percent text-[10px] text-pink-400"></i>
+                            </div>
+                            <div class="mt-2 space-y-0.5">
+                                <div class="text-[11px] flex justify-between"><span class="text-emerald-400">Call:</span> <span id="greek-rho-call" class="font-mono font-semibold">--</span></div>
+                                <div class="text-[11px] flex justify-between"><span class="text-rose-400">Put:</span> <span id="greek-rho-put" class="font-mono font-semibold">--</span></div>
+                            </div>
+                            <span class="block text-[9px] text-gray-500 mt-1.5">\(\partial V / \partial r\)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TABBED ANALYTICS CONTAINER -->
+                <div class="bg-gray-900/90 border border-gray-800 rounded-2xl shadow-xl overflow-hidden">
+                    <!-- Tab Header Navigation -->
+                    <div class="flex border-b border-gray-800 bg-gray-950/60 overflow-x-auto text-xs font-medium scrollbar-thin">
+                        <button onclick="switchTab('tab-payoff')" id="btn-tab-payoff" class="tab-btn active px-4 py-3 border-b-2 border-cyan-400 text-cyan-400 hover:text-cyan-300 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-chart-area"></i> Option Payoff & Price
+                        </button>
+                        <button onclick="switchTab('tab-greeks')" id="btn-tab-greeks" class="tab-btn px-4 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-chart-line"></i> Greeks Curves
+                        </button>
+                        <button onclick="switchTab('tab-heatmap')" id="btn-tab-heatmap" class="tab-btn px-4 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-table-cells"></i> 2D Heatmaps
+                        </button>
+                        <button onclick="switchTab('tab-surface')" id="btn-tab-surface" class="tab-btn px-4 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-cube"></i> 3D Vol/Price Surface
+                        </button>
+                        <button onclick="switchTab('tab-iv')" id="btn-tab-iv" class="tab-btn px-4 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-magnifying-glass-chart"></i> Implied Volatility Solver
+                        </button>
+                        <button onclick="switchTab('tab-strategy')" id="btn-tab-strategy" class="tab-btn px-4 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-chess-knight"></i> Strategy Simulator
+                        </button>
+                        <button onclick="switchTab('tab-chain')" id="btn-tab-chain" class="tab-btn px-4 py-3 border-b-2 border-transparent text-gray-400 hover:text-gray-200 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-list-ol"></i> Option Chain
+                        </button>
+                    </div>
+
+                    <!-- TAB CONTENTS -->
+                    <div class="p-5">
+                        <!-- TAB 1: Payoff & Price -->
+                        <div id="tab-payoff" class="tab-pane space-y-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-gray-400">View:</span>
+                                    <button onclick="setPayoffView('both')" id="payoff-view-both" class="px-2.5 py-1 rounded bg-cyan-600/30 text-cyan-300 border border-cyan-500/40">Call & Put</button>
+                                    <button onclick="setPayoffView('call')" id="payoff-view-call" class="px-2.5 py-1 rounded bg-gray-800 text-gray-400 hover:bg-gray-700">Call Only</button>
+                                    <button onclick="setPayoffView('put')" id="payoff-view-put" class="px-2.5 py-1 rounded bg-gray-800 text-gray-400 hover:bg-gray-700">Put Only</button>
+                                </div>
+                                <div class="text-gray-400 text-xs flex items-center gap-3">
+                                    <span><span class="inline-block w-2.5 h-0.5 bg-emerald-400 mr-1"></span> Call BS Price</span>
+                                    <span><span class="inline-block w-2.5 h-0.5 bg-rose-400 mr-1"></span> Put BS Price</span>
+                                    <span><span class="inline-block w-2.5 h-0.5 bg-gray-400 border-dashed border-t border-gray-400 mr-1"></span> Payoff at Expiry</span>
+                                </div>
+                            </div>
+                            <div class="h-80 w-full relative">
+                                <canvas id="chart-payoff"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: Greeks Curves -->
+                        <div id="tab-greeks" class="tab-pane hidden space-y-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-gray-400">Greek:</span>
+                                    <button onclick="setGreekCurve('delta')" id="gc-btn-delta" class="px-2.5 py-1 rounded bg-cyan-600/30 text-cyan-300 border border-cyan-500/40">Delta</button>
+                                    <button onclick="setGreekCurve('gamma')" id="gc-btn-gamma" class="px-2.5 py-1 rounded bg-gray-800 text-gray-400 hover:bg-gray-700">Gamma</button>
+                                    <button onclick="setGreekCurve('vega')" id="gc-btn-vega" class="px-2.5 py-1 rounded bg-gray-800 text-gray-400 hover:bg-gray-700">Vega</button>
+                                    <button onclick="setGreekCurve('theta')" id="gc-btn-theta" class="px-2.5 py-1 rounded bg-gray-800 text-gray-400 hover:bg-gray-700">Theta</button>
+                                    <button onclick="setGreekCurve('rho')" id="gc-btn-rho" class="px-2.5 py-1 rounded bg-gray-800 text-gray-400 hover:bg-gray-700">Rho</button>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-gray-400">X-Axis:</span>
+                                    <button onclick="setGreekAxis('spot')" id="ga-btn-spot" class="px-2.5 py-1 rounded bg-indigo-600/30 text-indigo-300 border border-indigo-500/40">vs Spot Price</button>
+                                    <button onclick="setGreekAxis('time')" id="ga-btn-time" class="px-2.5 py-1 rounded bg-gray-800 text-gray-400 hover:bg-gray-700">vs Time to Expiry</button>
+                                </div>
+                            </div>
+                            <div class="h-80 w-full relative">
+                                <canvas id="chart-greeks"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- TAB 3: 2D Heatmaps -->
+                        <div id="tab-heatmap" class="tab-pane hidden space-y-4">
+                            <div class="flex items-center justify-between text-xs">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-gray-400">Heatmap Target:</span>
+                                    <select id="heatmap-select" onchange="renderHeatmap()" class="bg-gray-800 border border-gray-700 text-cyan-300 text-xs rounded px-2.5 py-1">
+                                        <option value="call">Call Price ($)</option>
+                                        <option value="put">Put Price ($)</option>
+                                        <option value="delta">Call Delta</option>
+                                        <option value="gamma">Gamma</option>
+                                        <option value="vega">Vega</option>
+                                    </select>
+                                </div>
+                                <span class="text-gray-500 text-[11px]">Spot Price (X) vs Volatility (Y)</span>
+                            </div>
+                            <div id="plotly-heatmap" class="h-80 w-full"></div>
+                        </div>
+
+                        <!-- TAB 4: 3D Surface -->
+                        <div id="tab-surface" class="tab-pane hidden space-y-4">
+                            <div class="flex items-center justify-between text-xs">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-gray-400">Surface Metric:</span>
+                                    <select id="surface-select" onchange="renderSurface()" class="bg-gray-800 border border-gray-700 text-cyan-300 text-xs rounded px-2.5 py-1">
+                                        <option value="call">Call Option Price Surface</option>
+                                        <option value="put">Put Option Price Surface</option>
+                                        <option value="gamma">Gamma Convexity Surface</option>
+                                        <option value="vega">Vega Sensitivity Surface</option>
+                                    </select>
+                                </div>
+                                <span class="text-gray-500 text-[11px]">Interactive WebGL (Rotate, Zoom, Pan)</span>
+                            </div>
+                            <div id="plotly-surface" class="h-96 w-full"></div>
+                        </div>
+
+                        <!-- TAB 5: Implied Volatility Solver -->
+                        <div id="tab-iv" class="tab-pane hidden space-y-4">
+                            <div class="bg-gray-800/40 p-4 rounded-xl border border-gray-700/50">
+                                <h4 class="text-sm font-semibold text-gray-200 mb-2 flex items-center gap-2">
+                                    <i class="fa-solid fa-calculator text-cyan-400"></i> Newton-Raphson Implied Volatility Solver
+                                </h4>
+                                <p class="text-xs text-gray-400 mb-4">
+                                    Solves for the implied volatility \(\sigma_{implied}\) that makes Black-Scholes theoretical price equal to the observed market price using the exact algorithm from <code class="text-cyan-300">code.py</code>.
+                                </p>
+                                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                                    <div>
+                                        <label class="block text-gray-400 mb-1">Option Type</label>
+                                        <select id="iv-type" class="w-full bg-gray-800 border border-gray-700 text-gray-200 rounded px-2.5 py-1.5">
+                                            <option value="call">Call Option</option>
+                                            <option value="put">Put Option</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-gray-400 mb-1">Market Price ($)</label>
+                                        <input type="number" id="iv-market-price" value="10.50" step="0.1" min="0.01" class="w-full bg-gray-800 border border-gray-700 text-cyan-300 font-mono rounded px-2.5 py-1.5">
+                                    </div>
+                                    <div>
+                                        <label class="block text-gray-400 mb-1">Current Strike (\(K\))</label>
+                                        <input type="number" id="iv-strike" value="100.0" step="0.5" class="w-full bg-gray-800 border border-gray-700 text-gray-200 font-mono rounded px-2.5 py-1.5">
+                                    </div>
+                                    <div class="flex items-end">
+                                        <button onclick="calculateIV()" class="w-full py-1.5 px-4 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-medium rounded transition flex items-center justify-center gap-2">
+                                            <i class="fa-solid fa-play"></i> Solve IV
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- IV Result Box -->
+                            <div id="iv-result-box" class="hidden bg-gray-800/80 border border-cyan-500/40 rounded-xl p-4 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-gray-400">Calculated Implied Volatility:</span>
+                                    <span id="iv-result-val" class="text-2xl font-extrabold text-cyan-400 font-mono">--%</span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 text-xs pt-2 border-t border-gray-700">
+                                    <div><span class="text-gray-400">Decimal:</span> <span id="iv-decimal" class="font-mono text-gray-200">--</span></div>
+                                    <div><span class="text-gray-400">Model Price:</span> <span id="iv-recovered" class="font-mono text-gray-200">--</span></div>
+                                    <div><span class="text-gray-400">Convergence Error:</span> <span id="iv-error" class="font-mono text-emerald-400">--</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 6: Strategy Simulator -->
+                        <div id="tab-strategy" class="tab-pane hidden space-y-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-gray-400">Preset Strategy:</span>
+                                    <select id="strategy-preset-select" onchange="loadStrategyPreset(this.value)" class="bg-gray-800 border border-gray-700 text-cyan-300 text-xs rounded px-2.5 py-1">
+                                        <option value="long_call">Long Call</option>
+                                        <option value="long_put">Long Put</option>
+                                        <option value="covered_call">Covered Call (Stock + Short Call)</option>
+                                        <option value="protective_put">Protective Put (Stock + Long Put)</option>
+                                        <option value="bull_call_spread">Bull Call Spread</option>
+                                        <option value="bear_put_spread">Bear Put Spread</option>
+                                        <option value="long_straddle">Long Straddle</option>
+                                        <option value="long_strangle">Long Strangle</option>
+                                        <option value="iron_condor">Iron Condor (4 Legs)</option>
+                                        <option value="custom">Custom Portfolio</option>
+                                    </select>
+                                </div>
+                                <button onclick="addStrategyLeg()" class="px-2.5 py-1 bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 rounded hover:bg-cyan-600/50">
+                                    <i class="fa-solid fa-plus mr-1"></i> Add Leg
+                                </button>
+                            </div>
+
+                            <!-- Legs Table -->
+                            <div class="overflow-x-auto border border-gray-800 rounded-xl">
+                                <table class="w-full text-xs text-left">
+                                    <thead class="bg-gray-800/80 text-gray-400 uppercase text-[10px]">
+                                        <tr>
+                                            <th class="p-2.5">Type</th>
+                                            <th class="p-2.5">Position</th>
+                                            <th class="p-2.5">Strike ($)</th>
+                                            <th class="p-2.5">Qty</th>
+                                            <th class="p-2.5">Premium ($)</th>
+                                            <th class="p-2.5 text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="strategy-legs-tbody" class="divide-y divide-gray-800">
+                                        <!-- Dynamically generated legs -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Strategy Metrics & Chart -->
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-gray-800/40 p-3 rounded-xl border border-gray-700/50">
+                                <div><span class="text-gray-400">Net Premium / Entry:</span> <span id="strat-cost" class="font-mono font-bold block text-sm text-cyan-300">$0.00</span></div>
+                                <div><span class="text-gray-400">Max Profit:</span> <span id="strat-max-profit" class="font-mono font-bold block text-sm text-emerald-400">--</span></div>
+                                <div><span class="text-gray-400">Max Loss:</span> <span id="strat-max-loss" class="font-mono font-bold block text-sm text-rose-400">--</span></div>
+                                <div><span class="text-gray-400">Breakeven(s):</span> <span id="strat-breakevens" class="font-mono font-bold block text-sm text-amber-300">--</span></div>
+                            </div>
+
+                            <div class="h-80 w-full relative">
+                                <canvas id="chart-strategy"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- TAB 7: Option Chain -->
+                        <div id="tab-chain" class="tab-pane hidden space-y-4">
+                            <div class="flex items-center justify-between text-xs">
+                                <div class="text-gray-400">
+                                    Option Chain for Spot = <span id="chain-spot-ref" class="text-cyan-300 font-mono font-bold">$100.00</span>
+                                </div>
+                                <button onclick="exportChainCSV()" class="px-3 py-1.5 bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 rounded hover:bg-emerald-600/50 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-file-csv"></i> Export CSV
+                                </button>
+                            </div>
+
+                            <div class="overflow-x-auto border border-gray-800 rounded-xl">
+                                <table class="w-full text-xs text-center border-collapse">
+                                    <thead>
+                                        <tr class="bg-gray-800 text-[11px]">
+                                            <th colspan="4" class="p-2 bg-emerald-950/60 text-emerald-400 border-r border-gray-700">CALLS</th>
+                                            <th class="p-2 bg-gray-900 text-gray-200 border-r border-gray-700">STRIKE</th>
+                                            <th colspan="4" class="p-2 bg-rose-950/60 text-rose-400">PUTS</th>
+                                        </tr>
+                                        <tr class="bg-gray-900/90 text-gray-400 text-[10px] border-b border-gray-800 font-mono">
+                                            <th class="p-2">Price ($)</th>
+                                            <th class="p-2">Delta</th>
+                                            <th class="p-2">Theta/d</th>
+                                            <th class="p-2 border-r border-gray-700">Gamma</th>
+                                            <th class="p-2 bg-gray-800 text-cyan-300 border-r border-gray-700">Strike ($)</th>
+                                            <th class="p-2 border-r border-gray-800">Gamma</th>
+                                            <th class="p-2">Theta/d</th>
+                                            <th class="p-2">Delta</th>
+                                            <th class="p-2">Price ($)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="option-chain-tbody" class="divide-y divide-gray-800 font-mono">
+                                        <!-- Dynamically generated chain rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </section>
+        </div>
+    </main>
+
+    <!-- FORMULA & THEORY MODAL -->
+    <div id="formula-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto p-6 shadow-2xl relative">
+            <button onclick="closeModal('formula-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-lg font-bold text-cyan-400 mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-square-root-variable"></i> Black-Scholes Mathematical Foundations
+            </h3>
+            <div class="space-y-4 text-xs text-gray-300 leading-relaxed">
+                <div>
+                    <h4 class="font-semibold text-white mb-1">1. Black-Scholes Pricing Formulas</h4>
+                    <div class="bg-gray-950 p-3 rounded-lg border border-gray-800 font-mono text-cyan-300">
+                        \[ C(S, t) = S e^{-q T} N(d_1) - K e^{-r T} N(d_2) \]
+                        \[ P(S, t) = K e^{-r T} N(-d_2) - S e^{-q T} N(-d_1) \]
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-white mb-1">2. Intermediate Variables (\(d_1\) and \(d_2\))</h4>
+                    <div class="bg-gray-950 p-3 rounded-lg border border-gray-800 font-mono text-cyan-300">
+                        \[ d_1 = \frac{\ln(S / K) + \left(r - q + \frac{1}{2}\sigma^2\right)T}{\sigma \sqrt{T}} \]
+                        \[ d_2 = d_1 - \sigma \sqrt{T} \]
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-white mb-1">3. The Greeks (Sensitivities)</h4>
+                    <ul class="list-disc pl-5 space-y-1.5">
+                        <li><strong>Delta (\(\Delta\)):</strong> \(\Delta_{Call} = e^{-qT} N(d_1)\), \(\Delta_{Put} = e^{-qT} (N(d_1) - 1)\)</li>
+                        <li><strong>Gamma (\(\Gamma\)):</strong> \(\Gamma = \frac{e^{-qT} N'(d_1)}{S \sigma \sqrt{T}}\)</li>
+                        <li><strong>Vega (\(\mathcal{V}\)):</strong> \(\mathcal{V} = S e^{-qT} N'(d_1) \sqrt{T}\)</li>
+                        <li><strong>Theta (\(\Theta\)):</strong> Time decay rate per year (divided by 365 for daily decay)</li>
+                        <li><strong>Rho (\(\rho\)):</strong> Sensitivity to interest rate \(r\)</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-white mb-1">4. Implied Volatility Solver</h4>
+                    <p>Uses Newton-Raphson root finding: \(\sigma_{n+1} = \sigma_n + \frac{C_{market} - C_{model}(\sigma_n)}{\mathcal{V}(\sigma_n)}\) to solve for market implied volatility.</p>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="closeModal('formula-modal')" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+/* Custom styling enhancements for Black-Scholes Dashboard */
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
+/* Range input styling */
+input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: #1e293b;
+    outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #22d3ee;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(34, 211, 238, 0.6);
+    transition: all 0.15s ease-in-out;
+}
+input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    background: #38bdf8;
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.9);
+}
+
+/* Active tab style */
+.tab-btn.active {
+    border-color: #22d3ee !important;
+    color: #22d3ee !important;
+    background-color: rgba(34, 211, 238, 0.05);
+}
+
+/* Moneyness rows in option chain */
+.itm-call {
+    background-color: rgba(16, 185, 129, 0.08);
+}
+.itm-put {
+    background-color: rgba(239, 68, 68, 0.08);
+}
+.atm-row {
+    background-color: rgba(99, 102, 241, 0.15) !important;
+    font-weight: bold;
+}
+
+/* KaTeX equations in math boxes */
+.katex-display {
+    margin: 0.5em 0 !important;
+}
